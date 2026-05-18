@@ -1,0 +1,106 @@
+@model MeetingRoomWeb.Models.Booking
+@{
+    ViewData["Title"] = "Đặt Lịch Mới";
+}
+
+<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+    <div class="bg-white px-8 py-10 rounded-2xl shadow-xl border border-gray-100">
+        <div class="mb-8 border-b border-gray-100 pb-5">
+            <h2 class="text-2xl font-bold leading-7 text-gray-900 sm:truncate sm:text-3xl sm:tracking-tight">Tạo Đặt Lịch Họp Mới</h2>
+            <p class="mt-2 text-sm text-gray-500">Nhập thời gian, chọn phòng và tải lên tài liệu chuẩn bị (nếu có).</p>
+        </div>
+
+        <form asp-action="Create" enctype="multipart/form-data" class="space-y-8">
+            <div asp-validation-summary="ModelOnly" class="text-red-500 text-sm font-semibold p-4 bg-red-50 rounded-lg"></div>
+            
+            <div class="grid grid-cols-1 gap-x-8 gap-y-8 sm:grid-cols-6">
+                
+                <div class="sm:col-span-3">
+                    <label asp-for="RoomId" class="block text-sm font-bold leading-6 text-gray-900">Phòng Họp</label>
+                    <div class="mt-2">
+                        <select asp-for="RoomId" class="block w-full rounded-lg border-0 py-3 px-4 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-brand-600 sm:text-sm sm:leading-6 font-medium" asp-items="ViewBag.RoomId"></select>
+                    </div>
+                </div>
+
+                <div class="sm:col-span-3">
+                    <label asp-for="UserId" class="block text-sm font-bold leading-6 text-gray-900">Người Đặt</label>
+                    <div class="mt-2">
+                        <select asp-for="UserId" class="block w-full rounded-lg border-0 py-3 px-4 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-brand-600 sm:text-sm sm:leading-6 font-medium bg-gray-50" asp-items="ViewBag.UserId"></select>
+                    </div>
+                </div>
+
+                <div class="col-span-full">
+                    <label asp-for="Title" class="block text-sm font-bold leading-6 text-gray-900">Tiêu đề cuộc họp</label>
+                    <div class="mt-2">
+                        <input asp-for="Title" class="block w-full rounded-lg border-0 py-3 px-4 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-brand-600 sm:text-lg font-bold" placeholder="VD: Giao ban dự án Marketing T3..." />
+                        <span asp-validation-for="Title" class="text-red-500 text-xs mt-1"></span>
+                    </div>
+                </div>
+
+                <div class="sm:col-span-3">
+                    <label asp-for="StartTime" class="block text-sm font-bold leading-6 text-gray-900">Thời gian bắt đầu</label>
+                    <div class="mt-2 text-gray-600">
+                        <input asp-for="StartTime" type="datetime-local" class="block w-full rounded-lg border-0 py-3 px-4 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-brand-600 sm:text-sm sm:leading-6" />
+                        <span asp-validation-for="StartTime" class="text-red-500 text-xs mt-1"></span>
+                    </div>
+                </div>
+
+                <div class="sm:col-span-3">
+                    <label asp-for="EndTime" class="block text-sm font-bold leading-6 text-gray-900">Thời gian kết thúc</label>
+                    <div class="mt-2 text-gray-600">
+                        <input asp-for="EndTime" type="datetime-local" class="block w-full rounded-lg border-0 py-3 px-4 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-brand-600 sm:text-sm sm:leading-6" />
+                        <span asp-validation-for="EndTime" class="text-red-500 text-xs mt-1"></span>
+                    </div>
+                </div>
+
+                <div class="col-span-full">
+                    <label asp-for="Description" class="block text-sm font-bold leading-6 text-gray-900">Nội dung / Mô tả</label>
+                    <div class="mt-2">
+                        <textarea asp-for="Description" rows="3" class="block w-full rounded-lg border-0 py-3 px-4 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-brand-600 sm:text-sm sm:leading-6"></textarea>
+                        <span asp-validation-for="Description" class="text-red-500 text-xs mt-1"></span>
+                    </div>
+                </div>
+
+                <!-- Đính kèm file -->
+                <div class="col-span-full">
+                    <label class="block text-sm font-bold leading-6 text-brand-700 bg-brand-50 p-2 rounded t-2 inline-block mb-2">📁 Tải lên Tài liệu đính kèm (Tuỳ chọn)</label>
+                    <div class="mt-2 flex justify-center rounded-xl border border-dashed border-gray-400 px-6 py-10 hover:border-brand-500 hover:bg-brand-50 transition-all cursor-pointer relative">
+                        <div class="text-center">
+                            <svg class="mx-auto h-12 w-12 text-gray-300" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                <path fill-rule="evenodd" d="M11.47 2.47a.75.75 0 011.06 0l4.5 4.5a.75.75 0 01-1.06 1.06l-3.22-3.22V16.5a.75.75 0 01-1.5 0V4.81L8.03 8.03a.75.75 0 01-1.06-1.06l4.5-4.5zM3 15.75A.75.75 0 013.75 15h16.5a.75.75 0 01.75.75v3.75a.75.75 0 01-.75.75H3.75A.75.75 0 013 19.5v-3.75z" clip-rule="evenodd" />
+                            </svg>
+                            <div class="mt-4 flex text-sm leading-6 text-gray-600 justify-center">
+                                <label for="file-upload" class="relative cursor-pointer rounded-md bg-white font-semibold text-brand-600 focus-within:outline-none focus-within:ring-2 focus-within:ring-brand-600 focus-within:ring-offset-2 hover:text-brand-500 px-2">
+                                    <span>Chọn file từ máy tính</span>
+                                    <input id="file-upload" name="document" type="file" class="sr-only">
+                                </label>
+                            </div>
+                            <p class="text-xs leading-5 text-gray-500 mt-1">PDF, DOCX, XLSX, PPTX lên tới 10MB</p>
+                        </div>
+                        <input type="file" name="document" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                    </div>
+                </div>
+
+                <div class="sm:col-span-3">
+                    <label asp-for="Status" class="block text-sm font-bold leading-6 text-gray-900">Trạng Thái Phê Duyệt</label>
+                    <div class="mt-2">
+                        <select asp-for="Status" class="block w-full rounded-lg border-0 py-3 px-4 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-brand-600 sm:text-sm font-bold bg-white">
+                            <option value="Pending">Chờ Duyệt (Pending)</option>
+                            <option value="Approved">Đã Duyệt (Approved)</option>
+                            <option value="Cancelled">Đã Huỷ (Cancelled)</option>
+                        </select>
+                        <span asp-validation-for="Status" class="text-red-500 text-xs mt-1"></span>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="mt-10 flex items-center justify-end gap-x-6 border-t border-gray-900/10 pt-6">
+                <a asp-action="Index" class="text-sm font-semibold leading-6 text-gray-500 hover:text-gray-900 transition-colors">Trở về danh sách</a>
+                <button type="submit" class="rounded-lg bg-brand-600 px-10 py-3 text-sm font-bold text-white shadow-md hover:bg-brand-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 hover:shadow-xl hover:-translate-y-0.5 transition-all">
+                    Chốt lịch họp
+                </button>
+            </div>
+        </form>
+    </div>
+</div>

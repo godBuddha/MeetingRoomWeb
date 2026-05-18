@@ -1,0 +1,60 @@
+@model MeetingRoomWeb.Models.MeetingRoom
+@{
+    ViewData["Title"] = "Thêm Phòng Mới";
+}
+
+<div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+    <div class="bg-white px-8 py-10 rounded-2xl shadow-xl border border-gray-100">
+        <div class="mb-8">
+            <h2 class="text-2xl font-bold leading-7 text-gray-900 sm:truncate sm:text-3xl sm:tracking-tight">Tạo phòng họp mới</h2>
+            <p class="mt-2 text-sm text-gray-500">Điền các thông tin sức chứa và thiết bị của phòng.</p>
+        </div>
+
+        <form asp-action="Create" class="space-y-6">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            
+            <div class="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6">
+                <div class="sm:col-span-4">
+                    <label asp-for="Name" class="block text-sm font-medium leading-6 text-gray-900">Tên Phòng</label>
+                    <div class="mt-2">
+                        <input asp-for="Name" class="block w-full rounded-md border-0 py-2.5 px-3 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-brand-600 sm:text-sm sm:leading-6" placeholder="Ví dụ: Phòng Họp Lớn Tầng 1" />
+                        <span asp-validation-for="Name" class="text-red-500 text-xs mt-1"></span>
+                    </div>
+                </div>
+
+                <div class="sm:col-span-2">
+                    <label asp-for="Capacity" class="block text-sm font-medium leading-6 text-gray-900">Sức chứa (Người)</label>
+                    <div class="mt-2">
+                        <input asp-for="Capacity" type="number" class="block w-full rounded-md border-0 py-2.5 px-3 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-brand-600 sm:text-sm sm:leading-6" />
+                        <span asp-validation-for="Capacity" class="text-red-500 text-xs mt-1"></span>
+                    </div>
+                </div>
+
+                <div class="col-span-full">
+                    <label asp-for="Equipment" class="block text-sm font-medium leading-6 text-gray-900">Trang thiết bị</label>
+                    <div class="mt-2">
+                        <textarea asp-for="Equipment" rows="3" class="block w-full rounded-md border-0 py-2.5 px-3 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-brand-600 sm:text-sm sm:leading-6" placeholder="Máy chiếu, Bảng trắng, 10 Ghế..."></textarea>
+                        <span asp-validation-for="Equipment" class="text-red-500 text-xs mt-1"></span>
+                    </div>
+                </div>
+
+                <div class="sm:col-span-full flex items-center gap-x-3">
+                    <div class="h-6 flex items-center">
+                        <input asp-for="IsActive" class="h-5 w-5 rounded border-gray-300 text-brand-600 focus:ring-brand-600" />
+                    </div>
+                    <div class="text-sm leading-6">
+                        <label asp-for="IsActive" class="font-medium text-gray-900">Sẵn sàng sử dụng</label>
+                        <p class="text-gray-500">Tắt tùy chọn này nếu phòng đang sửa chữa.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-8 flex items-center justify-end gap-x-6 border-t border-gray-900/10 pt-6">
+                <a asp-action="Index" class="text-sm font-semibold leading-6 text-gray-900 hover:text-gray-600">Hủy bỏ</a>
+                <button type="submit" class="rounded-md bg-brand-600 px-8 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 transition-all hover:shadow-lg hover:-translate-y-0.5">
+                    Tạo mới
+                </button>
+            </div>
+        </form>
+    </div>
+</div>

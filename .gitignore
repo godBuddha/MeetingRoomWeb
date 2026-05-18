@@ -1,0 +1,42 @@
+# .NET
+bin/
+obj/
+*.user
+*.suo
+*.cache
+*.dll
+*.pdb
+*.exe
+*.nupkg
+*.snupkg
+project.lock.json
+*.nuget.props
+*.nuget.targets
+
+# IDE
+.vs/
+.vscode/
+.idea/
+*.sln.docstates
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Node
+node_modules/
+package-lock.json
+
+# Uploads & sensitive data
+secure_uploads/
+wwwroot/uploads/
+appsettings.Development.json
+
+# Build artifacts
+MeetingRoomLauncher/build/
+*.o
+*.dSYM/
+
+# Backup (keep schema only)
+backup.sql

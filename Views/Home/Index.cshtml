@@ -1,0 +1,1144 @@
+@model MeetingRoomWeb.Models.HomeViewModel
+@{
+    ViewData["Title"] = "Hệ thống quản lý lịch họp";
+    var loginError = TempData["LoginError"]?.ToString();
+    var registerError = TempData["RegisterError"]?.ToString();
+    var forgotError = TempData["ForgotError"]?.ToString();
+    var resetError = TempData["ResetError"]?.ToString();
+    var success = TempData["Success"]?.ToString();
+    var showRegister = TempData["ShowRegister"]?.ToString() == "1";
+    var showForgot = TempData["ShowForgot"]?.ToString() == "1";
+    var showReset = TempData["ShowReset"]?.ToString() == "1";
+    var resetUserId = TempData["ResetUserId"]?.ToString() ?? "";
+    var resetUserName = TempData["ResetUserName"]?.ToString() ?? "";
+    var initTab = showRegister ? "register" : (showForgot ? "forgot" : (showReset ? "reset" : "login"));
+}
+
+<!-- ==================== POPUP: Cần đăng nhập ==================== -->
+<div id="popup-auth" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+    <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full mx-4 text-center animate-bounce-in">
+        <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg class="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+        </div>
+        <h3 class="text-xl font-bold text-gray-900 mb-2">Yêu cầu đăng nhập</h3>
+        <p class="text-gray-500 mb-6">Bạn phải đăng nhập để sử dụng tính năng này. Vui lòng đăng nhập hoặc tạo tài khoản.</p>
+        <button onclick="closePopup('popup-auth')" class="w-full bg-brand-600 hover:bg-brand-700 text-white font-bold py-2.5 px-4 rounded-lg transition-colors">
+            Đã hiểu
+        </button>
+    </div>
+</div>
+
+<!-- ==================== MODAL: Sửa lịch họp ==================== -->
+<div id="modal-edit-booking" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 p-6">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-bold text-gray-900">✏️ Chỉnh sửa lịch họp</h3>
+            <button onclick="closePopup('modal-edit-booking')" class="text-gray-400 hover:text-gray-600"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+        </div>
+        <div id="edit-booking-msg" class="hidden mb-3 p-3 rounded-lg text-sm font-semibold"></div>
+        <form id="form-edit-booking">
+            @Html.AntiForgeryToken()
+            <input type="hidden" id="edit-booking-id" name="id" />
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div class="sm:col-span-2">
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Tiêu đề <span class="text-red-400">*</span></label>
+                    <input id="edit-title" name="title" type="text" required class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none" />
+                </div>
+                <div class="sm:col-span-2">
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Phòng họp <span class="text-red-400">*</span></label>
+                    <select id="edit-roomId" name="roomId" required class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none bg-white">
+                        @foreach (var r in Model.Rooms) { <option value="@r.Id">@r.Name</option> }
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Bắt đầu <span class="text-red-400">*</span></label>
+                    <input id="edit-startTime" name="startTime" type="datetime-local" required class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none" />
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Kết thúc <span class="text-red-400">*</span></label>
+                    <input id="edit-endTime" name="endTime" type="datetime-local" required class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none" />
+                </div>
+                <div class="sm:col-span-2">
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Mô tả</label>
+                    <textarea id="edit-description" name="description" rows="2" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none resize-none"></textarea>
+                </div>
+            </div>
+            <div class="mt-4 flex justify-end gap-3">
+                <button type="button" onclick="closePopup('modal-edit-booking')" class="px-4 py-2 text-sm text-gray-600">Huỷ</button>
+                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-2 rounded-lg text-sm">Lưu thay đổi 💾</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ==================== MODAL: Từ chối lịch họp ==================== -->
+<div id="modal-reject-booking" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 p-6">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-bold text-gray-900">❌ Từ chối lịch họp</h3>
+            <button onclick="closePopup('modal-reject-booking')" class="text-gray-400 hover:text-gray-600"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+        </div>
+        <input type="hidden" id="reject-booking-id" />
+        <label class="block text-sm font-bold text-gray-700 mb-1">Lý do từ chối <span class="text-red-400">*</span></label>
+        <textarea id="reject-reason" rows="3" placeholder="Nhập lý do từ chối..." class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none resize-none mb-4"></textarea>
+        <div class="flex justify-end gap-3">
+            <button onclick="closePopup('modal-reject-booking')" class="px-4 py-2 text-sm text-gray-600">Huỷ</button>
+            <button onclick="submitReject()" class="bg-red-600 hover:bg-red-700 text-white font-bold px-6 py-2 rounded-lg text-sm">Xác nhận từ chối</button>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== MODAL: Xác nhận duyệt ==================== -->
+<div id="modal-approve-booking" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 p-6 text-center">
+        <div class="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+        </div>
+        <h3 class="text-lg font-bold text-gray-900 mb-2">Xác nhận duyệt lịch</h3>
+        <p class="text-sm text-gray-500 mb-1">Bạn đồng ý duyệt lịch họp:</p>
+        <p id="approve-booking-title" class="text-sm font-bold text-gray-800 mb-5 italic"></p>
+        <input type="hidden" id="approve-booking-id" />
+        <div class="flex justify-center gap-3">
+            <button onclick="closePopup('modal-approve-booking')" class="px-5 py-2 text-sm font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">Huỷ</button>
+            <button onclick="submitApprove()" class="px-5 py-2 text-sm font-bold text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors">✅ Đồng ý duyệt</button>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== MODAL: Xác nhận xoá ==================== -->
+<div id="modal-delete-booking" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 p-6 text-center">
+        <div class="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg class="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+        </div>
+        <h3 class="text-lg font-bold text-gray-900 mb-2">Xác nhận xoá lịch</h3>
+        <p class="text-sm text-gray-500 mb-1">Bạn chắc chắn muốn xoá lịch họp:</p>
+        <p id="delete-booking-title" class="text-sm font-bold text-red-600 mb-5 italic"></p>
+        <input type="hidden" id="delete-booking-id" />
+        <div class="flex justify-center gap-3">
+            <button onclick="closePopup('modal-delete-booking')" class="px-5 py-2 text-sm font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">Huỷ</button>
+            <button onclick="submitDelete()" class="px-5 py-2 text-sm font-bold text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors">🗑️ Xoá lịch</button>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== MODAL: Quản lý Lịch Họp ==================== -->
+<div id="modal-bookings" class="hidden fixed inset-0 z-40 flex items-start justify-center bg-black/50 backdrop-blur-sm overflow-y-auto py-8">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-5xl mx-4">
+        <div class="flex items-center justify-between p-6 border-b border-gray-100">
+            <h2 class="text-2xl font-bold text-gray-900">📅 Quản lý Lịch Họp</h2>
+            <button onclick="closePopup('modal-bookings')" class="text-gray-400 hover:text-gray-600 transition-colors">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+
+        <!-- Tab: Danh sách + Thêm mới -->
+        <div class="flex border-b border-gray-100">
+            <button onclick="switchTab('tab-booking-list', 'tab-booking-create')" id="tab-booking-list-btn" class="tab-btn active-tab px-6 py-3 font-semibold text-sm">Danh sách</button>
+            <button onclick="switchTab('tab-booking-create', 'tab-booking-list')" id="tab-booking-create-btn" class="tab-btn px-6 py-3 font-semibold text-sm text-gray-500">+ Đặt lịch mới</button>
+        </div>
+
+        <!-- Tab: Danh sách Lịch -->
+        <div id="tab-booking-list" class="p-6 overflow-x-auto">
+            @if (Model.AllBookings.Any())
+            {
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50 rounded-xl">
+                        <tr>
+                            <th class="py-3 pl-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Tiêu Đề</th>
+                            <th class="py-3 px-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Phòng</th>
+                            <th class="py-3 px-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Thời Gian</th>
+                            <th class="py-3 px-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Trạng Thái</th>
+                            <th class="py-3 px-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Tài liệu</th>
+                            <th class="py-3 px-3"></th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-100">
+                        @foreach (var b in Model.AllBookings)
+                        {
+                            <tr class="hover:bg-gray-50 transition-colors">
+                                <td class="py-3 pl-4">
+                                    <div class="font-semibold text-gray-900 text-sm">@b.Title</div>
+                                    <div class="text-xs text-gray-400">@(b.User?.FullName ?? "")</div>
+                                </td>
+                                <td class="py-3 px-3 text-sm text-gray-600 font-medium">@(b.Room?.Name ?? "?")</td>
+                                <td class="py-3 px-3 text-sm text-gray-500">
+                                    <div class="font-mono font-bold text-gray-700">@b.StartTime.ToString("HH:mm") – @b.EndTime.ToString("HH:mm")</div>
+                                    <div class="text-xs text-gray-400">@b.StartTime.ToString("dd/MM/yyyy")</div>
+                                </td>
+                                <td class="py-3 px-3">
+                                    @if (b.Status == "Approved")
+                                    { <span class="px-2 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-700">Đã Duyệt</span> }
+                                    else if (b.Status == "Cancelled")
+                                    { <span class="px-2 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-700">Đã Huỷ</span> }
+                                    else
+                                    { <span class="px-2 py-0.5 rounded-full text-xs font-bold bg-yellow-100 text-yellow-800">Chờ Duyệt</span> }
+                                </td>
+                                <td class="py-3 px-3">
+                                    @if (b.Documents != null && b.Documents.Any())
+                                    {
+                                        <a href="@b.Documents.First().FilePath" target="_blank" class="text-brand-600 hover:text-brand-800 text-xs font-bold flex items-center gap-1">
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                                            @b.Documents.First().FileName
+                                        </a>
+                                    } else { <span class="text-xs text-gray-300">—</span> }
+                                </td>
+                                <td class="py-3 px-3">
+                                    <div class="flex items-center justify-end gap-1 flex-wrap">
+                                        @if (Model.IsAdmin && b.Status == "Pending")
+                                        {
+                                            <button onclick="openApproveModal('@b.Id','@b.Title.Replace("'","\\'")')"
+                                                    class="text-green-600 hover:text-green-800 text-xs font-bold bg-green-50 hover:bg-green-100 px-2 py-1 rounded-lg transition-colors">✅ Duyệt</button>
+                                            <button onclick="openRejectModal('@b.Id')"
+                                                    class="text-red-500 hover:text-red-700 text-xs font-bold bg-red-50 hover:bg-red-100 px-2 py-1 rounded-lg transition-colors">❌ Từ chối</button>
+                                        }
+                                        @if (Model.IsAdmin || b.UserId.ToString() == Model.CurrentUserId)
+                                        {
+                                            <button class="btn-edit text-blue-500 hover:text-blue-700 text-xs font-bold bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded-lg transition-colors"
+                                                    data-id="@b.Id"
+                                                    data-roomid="@b.RoomId"
+                                                    data-title="@b.Title"
+                                                    data-start="@b.StartTime.ToString("yyyy-MM-ddTHH:mm")"
+                                                    data-end="@b.EndTime.ToString("yyyy-MM-ddTHH:mm")"
+                                                    data-desc="@b.Description">✏️ Sửa</button>
+                                            <button onclick="openDeleteModal('@b.Id','@b.Title.Replace("'","\\'")')"
+                                                    class="text-red-400 hover:text-red-600 text-xs font-bold bg-red-50 hover:bg-red-100 px-2 py-1 rounded-lg transition-colors">🗑️ Xoá</button>
+                                        }
+                                    </div>
+                                </td>
+
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+            else
+            {
+                <div class="text-center py-12 text-gray-400">Chưa có lịch họp nào.</div>
+            }
+        </div>
+
+        <!-- Tab: Form Đặt lịch -->
+        <div id="tab-booking-create" class="p-6 hidden">
+            <div id="booking-success" class="hidden mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm font-semibold"></div>
+            <form id="form-create-booking" enctype="multipart/form-data">
+                @Html.AntiForgeryToken()
+                <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                    <div class="sm:col-span-2">
+                        <label class="block text-sm font-bold text-gray-700 mb-1">Tiêu đề cuộc họp <span class="text-red-400">*</span></label>
+                        <input name="title" type="text" required placeholder="VD: Họp giao ban tháng 3..." class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-brand-500 outline-none" />
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">Phòng họp <span class="text-red-400">*</span></label>
+                        <select name="roomId" required class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-brand-500 outline-none bg-white">
+                            <option value="">-- Chọn phòng --</option>
+                            @foreach (var r in Model.Rooms)
+                            { <option value="@r.Id">@r.Name (tối đa @r.Capacity người)</option> }
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">Bắt đầu <span class="text-red-400">*</span></label>
+                        <input name="startTime" type="datetime-local" required class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-brand-500 outline-none" />
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">Kết thúc <span class="text-red-400">*</span></label>
+                        <input name="endTime" type="datetime-local" required class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-brand-500 outline-none" />
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label class="block text-sm font-bold text-gray-700 mb-1">Nội dung / Mô tả</label>
+                        <textarea name="description" rows="2" class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-brand-500 outline-none resize-none"></textarea>
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label class="block text-sm font-bold text-gray-700 mb-1">📁 Tài liệu đính kèm (tuỳ chọn)</label>
+                        <input name="document" type="file" class="w-full border border-dashed border-gray-300 rounded-lg px-4 py-3 text-sm bg-gray-50 hover:bg-brand-50 hover:border-brand-400 focus:outline-none transition-colors cursor-pointer" />
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end gap-3">
+                    <button type="reset" class="px-5 py-2.5 text-sm font-semibold text-gray-600 hover:text-gray-900 transition-colors">Xoá form</button>
+                    <button type="submit" class="bg-brand-600 hover:bg-brand-700 text-white font-bold px-8 py-2.5 rounded-lg text-sm transition-all hover:shadow-lg">Chốt lịch họp 🚀</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== MODAL: Quản lý Phòng Họp ==================== -->
+<div id="modal-rooms" class="hidden fixed inset-0 z-40 flex items-start justify-center bg-black/50 backdrop-blur-sm overflow-y-auto py-8">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl mx-4">
+        <div class="flex items-center justify-between p-6 border-b border-gray-100">
+            <h2 class="text-2xl font-bold text-gray-900">🏢 Quản lý Phòng Họp</h2>
+            <button onclick="closePopup('modal-rooms')" class="text-gray-400 hover:text-gray-600 transition-colors">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+
+        <div class="flex border-b border-gray-100">
+            <button onclick="switchTab('tab-room-list', 'tab-room-create')" id="tab-room-list-btn" class="tab-btn active-tab px-6 py-3 font-semibold text-sm">Danh sách phòng</button>
+            <button onclick="switchTab('tab-room-create', 'tab-room-list')" id="tab-room-create-btn" class="tab-btn px-6 py-3 font-semibold text-sm text-gray-500">+ Thêm phòng mới</button>
+        </div>
+
+        <!-- Tab: Danh sách Phòng -->
+        <div id="tab-room-list" class="p-6 overflow-x-auto">
+            @if (Model.Rooms.Any())
+            {
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="py-3 pl-4 text-left text-xs font-bold text-gray-500 uppercase">Tên Phòng</th>
+                            <th class="py-3 px-3 text-left text-xs font-bold text-gray-500 uppercase">Sức Chứa</th>
+                            <th class="py-3 px-3 text-left text-xs font-bold text-gray-500 uppercase">Thiết Bị</th>
+                            <th class="py-3 px-3 text-left text-xs font-bold text-gray-500 uppercase">Trạng Thái</th>
+                            <th class="py-3 px-3"></th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        @foreach (var r in Model.Rooms)
+                        {
+                            <tr class="hover:bg-gray-50">
+                                <td class="py-3 pl-4 font-semibold text-sm text-gray-900">@r.Name</td>
+                                <td class="py-3 px-3"><span class="bg-blue-50 text-blue-700 text-xs font-bold px-2 py-0.5 rounded">@r.Capacity người</span></td>
+                                <td class="py-3 px-3 text-sm text-gray-500 max-w-xs">@r.Equipment</td>
+                                <td class="py-3 px-3">
+                                    @if (r.IsActive)
+                                    { <span class="px-2 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-700">Sẵn sàng</span> }
+                                    else
+                                    { <span class="px-2 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-700">Bảo trì</span> }
+                                </td>
+                                <td class="py-3 px-3">
+                                    <div class="flex items-center gap-2">
+                                        <button
+                                            onclick="openEditRoom(this)"
+                                            data-id="@r.Id"
+                                            data-name="@r.Name"
+                                            data-capacity="@r.Capacity"
+                                            data-equipment="@r.Equipment"
+                                            data-isactive="@r.IsActive.ToString().ToLower()"
+                                            class="text-xs font-bold px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors">
+                                            Sửa
+                                        </button>
+                                        <form method="post" asp-action="DeleteRoom" asp-controller="Home" onsubmit="return confirm('Xoá phòng này?')" class="inline">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="id" value="@r.Id" />
+                                            <button type="submit" class="text-xs font-bold px-3 py-1.5 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors">Xoá</button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+            else
+            {
+                <div class="text-center py-12 text-gray-400">Chưa có phòng họp nào.</div>
+            }
+        </div>
+
+        <!-- Tab: Form Thêm phòng -->
+        <div id="tab-room-create" class="p-6 hidden">
+            <div id="room-success" class="hidden mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm font-semibold"></div>
+            <form id="form-create-room">
+                @Html.AntiForgeryToken()
+                <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                    <div class="sm:col-span-2">
+                        <label class="block text-sm font-bold text-gray-700 mb-1">Tên phòng <span class="text-red-400">*</span></label>
+                        <input name="name" type="text" required placeholder="VD: Phòng họp Lớn - Tầng 2..." class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none" />
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">Sức chứa (người) <span class="text-red-400">*</span></label>
+                        <input name="capacity" type="number" min="1" required placeholder="20" class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none" />
+                    </div>
+                    <div class="flex items-end gap-3">
+                        <label class="flex items-center gap-2 cursor-pointer select-none">
+                            <input name="isActive" type="checkbox" checked value="true" class="w-4 h-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500" />
+                            <span class="text-sm font-semibold text-gray-700">Sẵn sàng sử dụng</span>
+                        </label>
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label class="block text-sm font-bold text-gray-700 mb-1">Trang thiết bị</label>
+                        <textarea name="equipment" rows="2" placeholder="Máy chiếu, Bảng trắng, Máy lạnh..." class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none resize-none"></textarea>
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end gap-3">
+                    <button type="reset" class="px-5 py-2.5 text-sm font-semibold text-gray-600 hover:text-gray-900">Xoá form</button>
+                    <button type="submit" class="bg-brand-600 hover:bg-brand-700 text-white font-bold px-8 py-2.5 rounded-lg text-sm transition-all hover:shadow-lg">Tạo phòng mới 🏢</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== LAYOUT CHÍNH ==================== -->
+<div class="flex flex-col lg:flex-row w-full min-h-screen">
+
+    <!-- Cột trái: Đăng nhập / Đăng ký / Logged in -->
+    <div class="w-full lg:w-1/3 lg:min-h-screen bg-white shadow-xl flex flex-col justify-center px-6 py-12 lg:px-12 z-10">
+        <div class="mb-8 text-center lg:text-left">
+            <h1 class="text-4xl font-extrabold text-gray-900 mb-1 tracking-tight">Meeting<span class="text-brand-600">Scheduler</span></h1>
+            <p class="text-gray-400 text-sm font-medium">Hệ thống quản lý lịch họp</p>
+        </div>
+
+        @if (!string.IsNullOrEmpty(success))
+        {
+            <div class="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm font-semibold">✅ @success</div>
+        }
+
+        @if (Model.IsLoggedIn)
+        {
+            <!-- Đã đăng nhập -->
+            <div class="mb-8 p-4 bg-brand-50 border border-brand-100 rounded-xl">
+                <p class="text-xs font-semibold text-brand-400 uppercase tracking-widest mb-1">Đã đăng nhập</p>
+                <p class="text-lg font-bold text-gray-900">@Model.CurrentUserName</p>
+                <p class="text-sm text-gray-500">@Model.CurrentUserEmail</p>
+            </div>
+
+            <div class="space-y-3 mb-6">
+                <p class="text-xs font-bold text-gray-400 uppercase tracking-widest">Khu vực điều hành</p>
+                <button onclick="openModal('modal-bookings')" class="flex items-center gap-3 w-full bg-brand-600 hover:bg-brand-700 text-white font-bold py-3 px-5 rounded-xl transition-all hover:shadow-lg hover:-translate-y-0.5">
+                    <span class="text-xl">📅</span>
+                    <div class="text-left">
+                        <div class="text-sm font-bold">Quản lý Lịch Họp</div>
+                        <div class="text-xs text-brand-200">@Model.AllBookings.Count lịch đặt</div>
+                    </div>
+                </button>
+                <button onclick="openModal('modal-rooms')" class="flex items-center gap-3 w-full bg-white border-2 border-gray-200 hover:border-brand-400 hover:bg-brand-50 text-gray-700 font-bold py-3 px-5 rounded-xl transition-all">
+                    <span class="text-xl">🏢</span>
+                    <div class="text-left">
+                        <div class="text-sm font-bold">Quản lý Phòng Họp</div>
+                        <div class="text-xs text-gray-400">@Model.Rooms.Count phòng họp</div>
+                    </div>
+                </button>
+                @if (Model.IsAdmin)
+                {
+                    <button onclick="openModal('modal-users')" class="flex items-center gap-3 w-full bg-white border-2 border-purple-200 hover:border-purple-400 hover:bg-purple-50 text-gray-700 font-bold py-3 px-5 rounded-xl transition-all">
+                        <span class="text-xl">👥</span>
+                        <div class="text-left">
+                            <div class="text-sm font-bold">Quản lý Tài khoản</div>
+                            <div class="text-xs text-gray-400">@Model.Users.Count tài khoản</div>
+                        </div>
+                    </button>
+                }
+            </div>
+
+
+            <form method="post" asp-action="Logout" asp-controller="Home">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="w-full text-sm text-gray-400 hover:text-red-500 font-semibold transition-colors py-2">Đăng xuất →</button>
+            </form>
+        }
+        else
+        {
+            <!-- Chưa đăng nhập: Tab 3 ô -->
+            <div class="flex border-b border-gray-100 mb-6 gap-1">
+                <button onclick="showAuthTab('login')" id="btn-login-tab" class="flex-1 py-2 text-xs font-bold text-brand-600 border-b-2 border-brand-600">Đăng nhập</button>
+                <button onclick="showAuthTab('register')" id="btn-register-tab" class="flex-1 py-2 text-xs font-semibold text-gray-400 border-b-2 border-transparent hover:text-brand-500 transition-colors">Đăng ký</button>
+                <button onclick="showAuthTab('forgot')" id="btn-forgot-tab" class="flex-1 py-2 text-xs font-semibold text-gray-400 border-b-2 border-transparent hover:text-red-400 transition-colors">Quên mật khẩu</button>
+            </div>
+
+            <!-- Form Đăng nhập -->
+            <div id="panel-login">
+                @if (!string.IsNullOrEmpty(loginError))
+                {
+                    <div class="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm font-semibold">⚠️ @loginError</div>
+                }
+                <form method="post" asp-action="Login" asp-controller="Home" class="space-y-4">
+                    @Html.AntiForgeryToken()
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1.5">Email</label>
+                        <input type="email" name="email" required class="w-full px-4 py-3 bg-gray-50 rounded-lg border border-gray-200 focus:bg-white focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-all text-sm" placeholder="name@company.com">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1.5">Mật khẩu</label>
+                        <input type="password" name="password" required class="w-full px-4 py-3 bg-gray-50 rounded-lg border border-gray-200 focus:bg-white focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-all text-sm" placeholder="••••••••">
+                    </div>
+                    <button type="submit" class="w-full bg-brand-600 hover:bg-brand-700 text-white font-bold py-3 px-4 rounded-lg transition-all hover:shadow-lg hover:-translate-y-0.5 text-sm">
+                        Đăng nhập →
+                    </button>
+                </form>
+
+                <!-- Nút quản lý nếu CHƯA đăng nhập: hiện popup -->
+                <div class="mt-6 border-t border-gray-100 pt-5 space-y-2">
+                    <p class="text-xs text-center text-gray-400 font-semibold uppercase tracking-wider mb-3">Truy cập nhanh (cần đăng nhập)</p>
+                    <button onclick="requireAuth()" class="flex items-center gap-2 w-full bg-gray-50 border border-gray-200 hover:bg-brand-50 hover:border-brand-300 text-gray-500 hover:text-brand-700 font-semibold py-2.5 px-4 rounded-lg transition-all text-sm">
+                        📅 Quản lý Lịch Họp
+                    </button>
+                    <button onclick="requireAuth()" class="flex items-center gap-2 w-full bg-gray-50 border border-gray-200 hover:bg-brand-50 hover:border-brand-300 text-gray-500 hover:text-brand-700 font-semibold py-2.5 px-4 rounded-lg transition-all text-sm">
+                        🏢 Quản lý Phòng Họp
+                    </button>
+                </div>
+            </div>
+
+            <!-- Form Đăng ký -->
+            <div id="panel-register" class="hidden">
+                @if (!string.IsNullOrEmpty(registerError))
+                {
+                    <div class="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm font-semibold">⚠️ @registerError</div>
+                }
+                <form method="post" asp-action="Register" asp-controller="Home" class="space-y-4">
+                    @Html.AntiForgeryToken()
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1.5">Họ và tên <span class="text-red-400">*</span></label>
+                        <input type="text" name="fullName" required class="w-full px-4 py-3 bg-gray-50 rounded-lg border border-gray-200 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-all text-sm" placeholder="Nguyễn Văn A">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1.5">Email <span class="text-red-400">*</span></label>
+                        <input type="email" name="email" required class="w-full px-4 py-3 bg-gray-50 rounded-lg border border-gray-200 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-all text-sm" placeholder="name@company.com">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1.5">Tên đăng nhập <span class="text-red-400">*</span></label>
+                        <input type="text" name="username" required class="w-full px-4 py-3 bg-gray-50 rounded-lg border border-gray-200 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-all text-sm" placeholder="nguyenvana">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1.5">Mật khẩu <span class="text-red-400">*</span></label>
+                        <input type="password" name="password" required minlength="6" class="w-full px-4 py-3 bg-gray-50 rounded-lg border border-gray-200 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-all text-sm" placeholder="Tối thiểu 6 ký tự">
+                    </div>
+                    <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg transition-all hover:shadow-lg hover:-translate-y-0.5 text-sm">
+                        Tạo tài khoản ✨
+                    </button>
+                </form>
+            </div>
+
+            <!-- Form Quên mật khẩu (Bước 1: xác minh danh tính) -->
+            <div id="panel-forgot" class="hidden">
+                @if (!string.IsNullOrEmpty(forgotError))
+                {
+                    <div class="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm font-semibold">⚠️ @forgotError</div>
+                }
+                <p class="text-xs text-gray-500 mb-4">Nhập email và tên đăng nhập để xác minh danh tính.</p>
+                <form method="post" asp-action="ForgotPassword" asp-controller="Home" class="space-y-4">
+                    @Html.AntiForgeryToken()
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1.5">Email <span class="text-red-400">*</span></label>
+                        <input type="email" name="email" required class="w-full px-4 py-3 bg-gray-50 rounded-lg border border-gray-200 focus:ring-2 focus:ring-red-400 focus:border-red-400 outline-none transition-all text-sm" placeholder="name@company.com">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1.5">Tên đăng nhập <span class="text-red-400">*</span></label>
+                        <input type="text" name="username" required class="w-full px-4 py-3 bg-gray-50 rounded-lg border border-gray-200 focus:ring-2 focus:ring-red-400 focus:border-red-400 outline-none transition-all text-sm" placeholder="nguyenvana">
+                    </div>
+                    <button type="submit" class="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 px-4 rounded-lg transition-all hover:shadow-lg text-sm">
+                        Xác minh danh tính 🔍
+                    </button>
+                </form>
+            </div>
+
+            <!-- Form Quên mật khẩu (Bước 2: đặt mật khẩu mới) -->
+            <div id="panel-reset" class="hidden">
+                @if (!string.IsNullOrEmpty(resetError))
+                {
+                    <div class="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm font-semibold">⚠️ @resetError</div>
+                }
+                <div class="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p class="text-blue-700 text-sm font-bold">✅ Xác minh thành công!</p>
+                    <p class="text-blue-600 text-xs mt-0.5">Đặt mật khẩu mới cho: <strong>@resetUserName</strong></p>
+                </div>
+                <form method="post" asp-action="ResetPassword" asp-controller="Home" class="space-y-4">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="userId" value="@resetUserId" />
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1.5">Mật khẩu mới <span class="text-red-400">*</span></label>
+                        <input type="password" name="newPassword" required minlength="6" class="w-full px-4 py-3 bg-gray-50 rounded-lg border border-gray-200 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-all text-sm" placeholder="Tối thiểu 6 ký tự">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1.5">Xác nhận mật khẩu <span class="text-red-400">*</span></label>
+                        <input type="password" name="confirmPassword" required minlength="6" class="w-full px-4 py-3 bg-gray-50 rounded-lg border border-gray-200 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-all text-sm" placeholder="Nhập lại mật khẩu">
+                    </div>
+                    <button type="submit" class="w-full bg-brand-600 hover:bg-brand-700 text-white font-bold py-3 px-4 rounded-lg transition-all hover:shadow-lg text-sm">
+                        Đặt lại mật khẩu 🔐
+                    </button>
+                </form>
+            </div>
+        }
+
+        <!-- Nút chuyển giao diện sáng/tối (always visible) -->
+        <div class="mt-4 pt-4 border-t border-gray-100">
+            <button onclick="toggleTheme()" id="btn-theme-toggle"
+                    class="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold text-gray-500 hover:bg-gray-100 transition-colors">
+                <span class="flex items-center gap-2">
+                    <span id="theme-icon">🌙</span>
+                    <span id="theme-label">Giao diện tối</span>
+                </span>
+                <span id="theme-track" class="relative inline-flex h-5 w-9 items-center rounded-full bg-gray-200">
+                    <span id="theme-thumb" class="inline-block h-3.5 w-3.5 translate-x-1 rounded-full bg-white shadow"></span>
+                </span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Cột phải: Dashboard -->
+    <div class="w-full lg:w-2/3 min-h-screen flex flex-col bg-gray-50 relative overflow-hidden">
+        <div class="absolute top-0 right-0 w-96 h-96 bg-brand-400 opacity-10 blur-3xl rounded-full translate-x-1/2 -translate-y-1/2 pointer-events-none"></div>
+        <div class="absolute bottom-0 left-0 w-96 h-96 bg-blue-300 opacity-20 blur-3xl rounded-full -translate-x-1/2 translate-y-1/2 pointer-events-none"></div>
+
+        <!-- Phần trên: Lịch họp sắp tới -->
+        <div class="flex-1 p-6 lg:p-10 overflow-y-auto relative z-10">
+            <div class="flex flex-col sm:flex-row items-start sm:items-end justify-between mb-8 gap-4">
+                <div>
+                    <h2 class="text-2xl lg:text-3xl font-extrabold text-gray-800 tracking-tight">Lịch họp sắp tới</h2>
+                    <p class="text-gray-500 mt-1 text-sm">Các sự kiện chuẩn bị diễn ra</p>
+                </div>
+                @if (Model.IsLoggedIn)
+                {
+                    <button onclick="openModal('modal-bookings')" class="text-sm font-bold text-brand-600 hover:text-brand-800 bg-brand-50 hover:bg-brand-100 px-5 py-2.5 rounded-full transition-colors border border-brand-100 shadow-sm whitespace-nowrap">
+                        + Đặt lịch họp
+                    </button>
+                }
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                @if (Model.UpcomingBookings.Any())
+                {
+                    foreach (var booking in Model.UpcomingBookings)
+                    {
+                        var isRejected = booking.Status == "Rejected";
+                        <div class="bg-white/90 backdrop-blur-md p-6 rounded-2xl shadow-sm border @(isRejected ? "border-red-200 bg-red-50/60" : "border-white") hover:shadow-lg transition-all transform hover:-translate-y-1 group cursor-default flex flex-col">
+                            <div class="flex justify-between items-start mb-3 gap-2 flex-wrap">
+                                @if (isRejected)
+                                {
+                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700 border border-red-200 truncate max-w-[55%]">@(booking.Room?.Name ?? "?")</span>
+                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-[10px] font-bold bg-red-500 text-white">❌ Từ Chối</span>
+                                }
+                                else
+                                {
+                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-800 border border-green-200 truncate max-w-[55%]">@(booking.Room?.Name ?? "?")</span>
+                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-[10px] font-bold bg-green-500 text-white">✅ Đã Duyệt</span>
+                                }
+                            </div>
+                            <h3 class="text-lg font-bold @(isRejected ? "text-red-800" : "text-gray-900") mb-1 group-hover:text-brand-600 transition-colors">@booking.Title</h3>
+                            <p class="text-xs font-semibold @(isRejected ? "text-red-500" : "text-brand-600") mb-1 flex items-center gap-1">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                @booking.StartTime.ToString("dd/MM/yyyy HH:mm") – @booking.EndTime.ToString("HH:mm")
+                            </p>
+                            <p class="text-sm text-gray-500 mb-3 flex items-center gap-1">
+                                <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                                @(booking.User?.FullName ?? "Người dùng")
+                            </p>
+                            @if (isRejected && !string.IsNullOrEmpty(booking.RejectionReason))
+                            {
+                                <div class="mb-3 p-2.5 bg-red-100 border border-red-200 rounded-lg text-xs text-red-700 font-semibold">
+                                    💬 Lý do từ chối: @booking.RejectionReason
+                                </div>
+                            }
+                            <div class="mt-auto border-t @(isRejected ? "border-red-100" : "border-gray-100") pt-3">
+                                @if (booking.Documents != null && booking.Documents.Any())
+                                {
+                                    var doc = booking.Documents.First();
+                                    <a href="@doc.FilePath" target="_blank" class="inline-flex items-center gap-1.5 text-xs font-bold text-brand-600 hover:text-brand-800 bg-brand-50 px-3 py-1.5 rounded-lg truncate w-full transition-colors">
+                                        <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
+                                        <span class="truncate">@doc.FileName</span>
+                                    </a>
+                                }
+                                else
+                                { <span class="text-xs text-gray-400">Chưa đính kèm tài liệu</span> }
+                            </div>
+                        </div>
+                    }
+
+                }
+                else
+                {
+                    <div class="col-span-2 text-center py-12 bg-white/50 rounded-2xl border border-dashed border-gray-300">
+                        <p class="text-gray-400 font-medium text-sm">Chưa có lịch họp sắp tới.</p>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Divider -->
+        <div class="mx-6 lg:mx-10 border-b border-gray-200/60 relative z-10"></div>
+
+        <!-- Phần dưới: Lịch sử dụng phòng họp -->
+        <div class="p-6 lg:p-10 bg-white/30 backdrop-blur-sm relative z-10">
+            <!-- Filter: Ngày / Tuần / Tháng -->
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-5 gap-3">
+                <h2 class="text-xl lg:text-2xl font-extrabold text-gray-800 tracking-tight">Lịch sử dụng phòng họp</h2>
+                <form method="get" asp-action="Index" asp-controller="Home" class="flex items-center gap-2 flex-wrap">
+                    <input type="date" name="date" value="@Model.FilterDate.ToString("yyyy-MM-dd")" class="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-brand-500 outline-none" />
+                    <div class="flex border border-gray-200 rounded-lg overflow-hidden">
+                        <button type="submit" name="period" value="day" class="px-3 py-1.5 text-xs font-bold transition-colors @(Model.FilterPeriod=="day" ? "bg-brand-600 text-white" : "bg-white text-gray-500 hover:bg-gray-50")">Ngày</button>
+                        <button type="submit" name="period" value="week" class="px-3 py-1.5 text-xs font-bold border-l border-gray-200 transition-colors @(Model.FilterPeriod=="week" ? "bg-brand-600 text-white" : "bg-white text-gray-500 hover:bg-gray-50")">Tuần</button>
+                        <button type="submit" name="period" value="month" class="px-3 py-1.5 text-xs font-bold border-l border-gray-200 transition-colors @(Model.FilterPeriod=="month" ? "bg-brand-600 text-white" : "bg-white text-gray-500 hover:bg-gray-50")">Tháng</button>
+                    </div>
+                </form>
+            </div>
+            <div class="space-y-4">
+                @if (Model.Rooms.Any())
+                {
+                    foreach (var room in Model.Rooms)
+                    {
+                        var roomBookings = Model.RoomUsageBookings.Where(b => b.RoomId == room.Id).OrderBy(b => b.StartTime).ToList();
+                        <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
+                            <div class="flex flex-wrap items-center justify-between mb-2 gap-2">
+                                <div class="flex items-center gap-2">
+                                    <span class="font-bold text-gray-900 text-sm">@room.Name</span>
+                                    <span class="bg-blue-50 text-blue-600 text-[10px] font-bold px-2 py-0.5 rounded border border-blue-100">@room.Capacity người</span>
+                                    <span class="text-[10px] text-gray-400 font-semibold">(@roomBookings.Count lịch)</span>
+                                </div>
+                                <div class="text-[10px] font-bold text-gray-400 bg-gray-50 px-2 py-1 rounded">@Model.FilterDate.ToString(Model.FilterPeriod == "day" ? "dd/MM/yyyy" : (Model.FilterPeriod == "month" ? "MM/yyyy" : "dd/MM/yyyy"))</div>
+                            </div>
+                            @if (!roomBookings.Any())
+                            {
+                                <div class="text-xs text-gray-300 text-center py-2 font-semibold tracking-widest">TRỐNG</div>
+                            }
+                            else
+                            {
+                                <div class="space-y-1">
+                                @foreach (var bk in roomBookings)
+                                {
+                                    var statusColor = bk.Status == "Approved" ? "bg-green-50 border-green-200 text-green-700" : (bk.Status == "Rejected" ? "bg-red-50 border-red-200 text-red-600" : "bg-yellow-50 border-yellow-200 text-yellow-700");
+                                    <div class="flex items-center justify-between text-xs px-3 py-1.5 rounded-lg border @statusColor">
+                                        <span class="font-bold truncate max-w-[40%]">@bk.Title</span>
+                                        <span class="font-mono">@bk.StartTime.ToString("HH:mm") – @bk.EndTime.ToString("HH:mm")</span>
+                                        <span>@(bk.User?.FullName ?? "")</span>
+                                        <span class="font-bold">@(bk.Status == "Approved" ? "✅" : bk.Status == "Rejected" ? "❌" : "⏳")</span>
+                                    </div>
+                                }
+                                </div>
+                            }
+                        </div>
+                    }
+                }
+                else
+                {
+                    <div class="bg-white p-5 rounded-2xl text-center text-gray-400 text-sm">Chưa có phòng họp nào.</div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== MODAL: Quản lý Tài khoản ==================== -->
+<div id="modal-users" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+        <div class="flex items-center justify-between p-6 border-b border-gray-100">
+            <div>
+                <h2 class="text-xl font-extrabold text-gray-900">👥 Quản lý Tài khoản</h2>
+                <p class="text-xs text-gray-400 mt-0.5">Phân quyền và xoá tài khoản người dùng</p>
+            </div>
+            <button onclick="closePopup('modal-users')" class="text-gray-400 hover:text-gray-700 text-2xl font-bold leading-none">&times;</button>
+        </div>
+        <div class="overflow-y-auto flex-1">
+            <table class="w-full text-sm">
+                <thead class="bg-gray-50 sticky top-0">
+                    <tr>
+                        <th class="text-left px-5 py-3 text-xs font-bold text-gray-500 uppercase">Tên</th>
+                        <th class="text-left px-5 py-3 text-xs font-bold text-gray-500 uppercase">Email</th>
+                        <th class="text-center px-5 py-3 text-xs font-bold text-gray-500 uppercase">Quyền</th>
+                        <th class="text-center px-5 py-3 text-xs font-bold text-gray-500 uppercase">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody id="user-table-body">
+                    @foreach (var u in Model.Users.OrderBy(x => x.Role == "Admin" ? 0 : 1).ThenBy(x => x.FullName))
+                    {
+                        var isSelf = u.Id.ToString() == Model.CurrentUserId;
+                        <tr class="border-t border-gray-100 hover:bg-gray-50 transition-colors" id="user-row-@u.Id">
+                            <td class="px-5 py-3 font-semibold text-gray-800">
+                                @u.FullName
+                                @if (isSelf) { <span class="ml-1 text-[10px] bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded font-bold">Bạn</span> }
+                            </td>
+                            <td class="px-5 py-3 text-gray-500">@u.Email</td>
+                            <td class="px-5 py-3 text-center">
+                                <span id="role-badge-@u.Id" class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold @(u.Role == "Admin" ? "bg-purple-100 text-purple-700" : "bg-gray-100 text-gray-600")">
+                                    @(u.Role == "Admin" ? "👑 Admin" : "👤 Employee")
+                                </span>
+                            </td>
+                            <td class="px-5 py-3 text-center">
+                                @if (!isSelf)
+                                {
+                                    <div class="flex items-center justify-center gap-2">
+                                        <button onclick="changeRole('@u.Id')" class="text-xs font-bold px-3 py-1.5 rounded-lg bg-purple-50 text-purple-600 hover:bg-purple-100 transition-colors">Đổi quyền</button>
+                                        <button onclick="openDeleteUser('@u.Id', '@u.FullName')" class="text-xs font-bold px-3 py-1.5 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors">Xoá</button>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <span class="text-xs text-gray-300 italic">—</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal xác nhận xoá tài khoản -->
+<div id="modal-delete-user" class="hidden fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm">
+    <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full mx-4 text-center">
+        <div class="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">🗑️</div>
+        <h3 class="text-lg font-extrabold text-gray-900 mb-2">Xoá tài khoản?</h3>
+        <p class="text-sm text-gray-500 mb-1">Bạn sắp xoá tài khoản:</p>
+        <p id="delete-user-name" class="font-bold text-red-600 mb-6"></p>
+        <div class="flex gap-3 justify-center">
+            <button onclick="closePopup('modal-delete-user')" class="px-5 py-2.5 rounded-xl border border-gray-200 text-gray-600 font-semibold text-sm hover:bg-gray-50">Huỷ</button>
+            <button id="btn-confirm-delete-user" class="px-5 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white font-bold text-sm transition-colors">Xoá</button>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== MODAL: Sửa Phòng Họp ==================== -->
+<div id="modal-edit-room" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
+        <div class="flex items-center justify-between p-6 border-b border-gray-100">
+            <div>
+                <h2 class="text-xl font-extrabold text-gray-900">🏢 Sửa Phòng Họp</h2>
+                <p class="text-xs text-gray-400 mt-0.5" id="edit-room-subtitle"></p>
+            </div>
+            <button onclick="closePopup('modal-edit-room')" class="text-gray-400 hover:text-gray-700 text-2xl font-bold leading-none">&times;</button>
+        </div>
+        <form id="form-edit-room" class="p-6 space-y-5">
+            @Html.AntiForgeryToken()
+            <input type="hidden" id="edit-room-id" name="id" />
+            <div class="grid grid-cols-2 gap-4">
+                <div class="col-span-2">
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Tên phòng <span class="text-red-400">*</span></label>
+                    <input id="edit-room-name" name="name" type="text" required class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none" />
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Sức chứa (người) <span class="text-red-400">*</span></label>
+                    <input id="edit-room-capacity" name="capacity" type="number" min="1" required class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-brand-500 outline-none" />
+                </div>
+                <div class="flex items-end">
+                    <label class="flex items-center gap-2 cursor-pointer select-none">
+                        <input id="edit-room-active" name="isActive" type="checkbox" value="true" class="w-4 h-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500" />
+                        <span class="text-sm font-semibold text-gray-700">Sẵn sàng sử dụng</span>
+                    </label>
+                </div>
+                <div class="col-span-2">
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Trang thiết bị</label>
+                    <textarea id="edit-room-equipment" name="equipment" rows="2" class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-brand-500 outline-none resize-none"></textarea>
+                </div>
+            </div>
+            <div id="edit-room-msg" class="hidden text-sm font-semibold text-red-600 bg-red-50 px-4 py-2 rounded-lg"></div>
+            <div class="flex justify-end gap-3 pt-2">
+                <button type="button" onclick="closePopup('modal-edit-room')" class="px-5 py-2.5 text-sm font-semibold text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">Huỷ</button>
+                <button type="submit" id="btn-submit-edit-room" class="bg-brand-600 hover:bg-brand-700 text-white font-bold px-8 py-2.5 rounded-lg text-sm transition-all hover:shadow-lg">Lưu thay đổi ✓</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ==================== JAVASCRIPT ==================== -->
+<script>
+function openModal(id) { document.getElementById(id).classList.remove('hidden'); document.body.classList.add('overflow-hidden'); }
+function closePopup(id) { document.getElementById(id).classList.add('hidden'); document.body.classList.remove('overflow-hidden'); }
+function requireAuth() { openModal('popup-auth'); }
+
+// Tab switcher cho xác thực (3 tab: login / register / forgot / reset)
+function showAuthTab(tab) {
+    const tabs = ['login', 'register', 'forgot', 'reset'];
+    tabs.forEach(t => {
+        const panel = document.getElementById('panel-' + t);
+        const btn   = document.getElementById('btn-' + t + '-tab');
+        if (!panel) return;
+        panel.classList.toggle('hidden', t !== tab);
+        if (btn) {
+            btn.className = (t === tab)
+                ? 'flex-1 py-2 text-xs font-bold text-brand-600 border-b-2 border-brand-600'
+                : 'flex-1 py-2 text-xs font-semibold text-gray-400 border-b-2 border-transparent hover:text-brand-500 transition-colors';
+        }
+    });
+}
+
+function switchTab(showId, hideId) {
+    document.getElementById(showId).classList.remove('hidden');
+    document.getElementById(hideId).classList.add('hidden');
+}
+
+// Close modal on background click
+['modal-bookings', 'modal-rooms', 'popup-auth'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('click', function(e) { if (e.target === this) closePopup(id); });
+});
+
+// AJAX: Đặt lịch họp
+const formBooking = document.getElementById('form-create-booking');
+if (formBooking) {
+    formBooking.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const fd = new FormData(this);
+        const btn = this.querySelector('button[type=submit]');
+        btn.disabled = true; btn.textContent = 'Đang xử lý...';
+        try {
+            const res = await fetch('/Home/CreateBooking', { method: 'POST', body: fd });
+            const data = await res.json();
+            const el = document.getElementById('booking-success');
+            if (data.conflict) {
+                // Hiện thông báo trùng lịch màu đỏ nổi bật
+                el.innerHTML = '❌ <strong>Trùng lịch, đã có lịch đăng ký!</strong> Vui lòng chọn thời gian khác hoặc phòng khác.';
+                el.className = 'mb-4 p-4 bg-red-50 border-2 border-red-400 rounded-xl text-red-700 text-sm font-bold animate-pulse';
+            } else {
+                el.textContent = data.success ? '✅ ' + data.message : '❌ ' + data.message;
+                el.className = data.success
+                    ? 'mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm font-semibold'
+                    : 'mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm font-semibold';
+            }
+            el.classList.remove('hidden');
+            if (data.success) { formBooking.reset(); setTimeout(() => location.reload(), 1500); }
+        } catch(err) {
+            const el = document.getElementById('booking-success');
+            el.textContent = '❌ Lỗi kết nối. Vui lòng thử lại.';
+            el.className = 'mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm font-semibold';
+            el.classList.remove('hidden');
+        } finally { btn.disabled = false; btn.textContent = 'Chốt lịch họp 🚀'; }
+    });
+}
+
+// AJAX: Thêm phòng họp
+const formRoom = document.getElementById('form-create-room');
+if (formRoom) {
+    formRoom.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const fd = new FormData(this);
+        const btn = this.querySelector('button[type=submit]');
+        btn.disabled = true; btn.textContent = 'Đang lưu...';
+        try {
+            const res = await fetch('/Home/CreateRoom', { method: 'POST', body: fd });
+            const data = await res.json();
+            const el = document.getElementById('room-success');
+            el.textContent = data.success ? '✅ ' + data.message : '❌ ' + data.message;
+            el.className = data.success
+                ? 'mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm font-semibold'
+                : 'mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm font-semibold';
+            el.classList.remove('hidden');
+            if (data.success) { formRoom.reset(); setTimeout(() => location.reload(), 1500); }
+        } catch { } finally { btn.disabled = false; btn.textContent = 'Tạo phòng mới 🏢'; }
+    });
+}
+
+// Tự động mở đúng tab khi có cần (TempData chỉ định)
+document.addEventListener('DOMContentLoaded', () => {
+    const initTab = '@initTab';
+    if (initTab && initTab !== 'login') showAuthTab(initTab);
+});
+
+// ─── Admin: Mở modal duyệt ───────────────────────────────────────────────────
+function openApproveModal(id, title) {
+    document.getElementById('approve-booking-id').value = id;
+    document.getElementById('approve-booking-title').textContent = title;
+    openModal('modal-approve-booking');
+}
+async function submitApprove() {
+    const id    = document.getElementById('approve-booking-id').value;
+    const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
+    const fd = new FormData(); fd.append('id', id); fd.append('__RequestVerificationToken', token);
+    const btn = document.querySelector('#modal-approve-booking button:last-child');
+    btn.disabled = true; btn.textContent = 'Đang xử lý...';
+    const res  = await fetch('/Home/ApproveBooking', { method: 'POST', body: fd });
+    const data = await res.json();
+    closePopup('modal-approve-booking');
+    btn.disabled = false; btn.innerHTML = '✅ Đồng ý duyệt';
+    if (data.success) location.reload();
+    else alert(data.message);
+}
+
+// ─── Admin: Mở modal từ chối ─────────────────────────────────────────────────
+function openRejectModal(id) {
+    document.getElementById('reject-booking-id').value = id;
+    document.getElementById('reject-reason').value = '';
+    openModal('modal-reject-booking');
+}
+async function submitReject() {
+    const id     = document.getElementById('reject-booking-id').value;
+    const reason = document.getElementById('reject-reason').value.trim();
+    if (!reason) { alert('Vui lòng nhập lý do từ chối.'); return; }
+    const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
+    const fd = new FormData();
+    fd.append('id', id); fd.append('reason', reason); fd.append('__RequestVerificationToken', token);
+    const btn = document.querySelector('#modal-reject-booking button:last-child');
+    btn.disabled = true; btn.textContent = 'Đang xử lý...';
+    const res  = await fetch('/Home/RejectBooking', { method: 'POST', body: fd });
+    const data = await res.json();
+    closePopup('modal-reject-booking');
+    btn.disabled = false; btn.textContent = 'Xác nhận từ chối';
+    if (data.success) location.reload();
+    else alert(data.message);
+}
+
+// ─── Mở modal Sửa lịch (via data-* attributes, event delegation) ─────────────
+document.addEventListener('click', function(e) {
+    const btn = e.target.closest('.btn-edit');
+    if (!btn) return;
+    document.getElementById('edit-booking-id').value  = btn.dataset.id;
+    document.getElementById('edit-roomId').value      = btn.dataset.roomid;
+    document.getElementById('edit-title').value       = btn.dataset.title;
+    document.getElementById('edit-startTime').value   = btn.dataset.start;
+    document.getElementById('edit-endTime').value     = btn.dataset.end;
+    document.getElementById('edit-description').value = btn.dataset.desc;
+    document.getElementById('edit-booking-msg').classList.add('hidden');
+    openModal('modal-edit-booking');
+});
+
+// ─── AJAX: Submit sửa lịch ───────────────────────────────────────────────────
+const formEdit = document.getElementById('form-edit-booking');
+if (formEdit) {
+    formEdit.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const fd  = new FormData(this);
+        const btn = this.querySelector('button[type=submit]');
+        btn.disabled = true; btn.textContent = 'Đang lưu...';
+        try {
+            const res  = await fetch('/Home/EditBooking', { method: 'POST', body: fd });
+            const data = await res.json();
+            const msg  = document.getElementById('edit-booking-msg');
+            if (data.conflict) {
+                msg.textContent = '❌ Trùng lịch, đã có lịch đăng ký! Vui lòng chọn thời gian khác.';
+                msg.className   = 'mb-3 p-3 rounded-lg text-sm font-bold bg-red-50 border-2 border-red-400 text-red-700';
+                msg.classList.remove('hidden');
+            } else {
+                msg.textContent = (data.success ? '✅ ' : '❌ ') + data.message;
+                msg.className   = 'mb-3 p-3 rounded-lg text-sm font-semibold ' + (data.success ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700');
+                msg.classList.remove('hidden');
+                if (data.success) setTimeout(() => { closePopup('modal-edit-booking'); location.reload(); }, 1000);
+            }
+        } finally { btn.disabled = false; btn.textContent = 'Lưu thay đổi 💾'; }
+    });
+}
+
+// ─── Mở modal xoá lịch ───────────────────────────────────────────────────────
+function openDeleteModal(id, title) {
+    document.getElementById('delete-booking-id').value = id;
+    document.getElementById('delete-booking-title').textContent = title;
+    openModal('modal-delete-booking');
+}
+async function submitDelete() {
+    const id    = document.getElementById('delete-booking-id').value;
+    const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
+    const fd = new FormData(); fd.append('id', id); fd.append('__RequestVerificationToken', token);
+    const btn = document.querySelector('#modal-delete-booking button:last-child');
+    btn.disabled = true; btn.textContent = 'Đang xoá...';
+    const res  = await fetch('/Home/DeleteBooking', { method: 'POST', body: fd });
+    const data = await res.json();
+    closePopup('modal-delete-booking');
+    btn.disabled = false; btn.innerHTML = '🗑️ Xoá lịch';
+    if (data.success) location.reload();
+    else alert(data.message);
+}
+
+// ─── Dark / Light Mode ────────────────────────────────────────────────────────
+function applyTheme(isDark) {
+    const html = document.documentElement;
+    if (isDark) {
+        html.setAttribute('data-theme', 'dark');
+    } else {
+        html.removeAttribute('data-theme');
+    }
+    const icon  = document.getElementById('theme-icon');
+    const label = document.getElementById('theme-label');
+    const track = document.getElementById('theme-track');
+    const thumb = document.getElementById('theme-thumb');
+    if (icon)  icon.textContent  = isDark ? '☀️' : '🌙';
+    if (label) label.textContent = isDark ? 'Giao diện sáng' : 'Giao diện tối';
+    if (track) { track.style.backgroundColor = isDark ? '#3b82f6' : ''; }
+    if (thumb) { thumb.style.transform = isDark ? 'translateX(1.25rem)' : 'translateX(0.25rem)'; }
+}
+function toggleTheme() {
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const next = !isDark;
+    localStorage.setItem('theme', next ? 'dark' : 'light');
+    applyTheme(next);
+}
+// Apply saved theme immediately on load
+(function() {
+    const saved = localStorage.getItem('theme');
+    applyTheme(saved === 'dark');
+})();
+
+// ─── User Management (Admin only) ─────────────────────────────────────────────
+async function changeRole(userId) {
+    const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
+    const res = await fetch('/Home/ChangeRole', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `userId=${encodeURIComponent(userId)}&__RequestVerificationToken=${encodeURIComponent(token)}`
+    });
+    const data = await res.json();
+    if (data.success) {
+        const badge = document.getElementById('role-badge-' + userId);
+        if (badge) {
+            if (data.newRole === 'Admin') {
+                badge.textContent = '👑 Admin';
+                badge.className = 'inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-purple-100 text-purple-700';
+            } else {
+                badge.textContent = '👤 Employee';
+                badge.className = 'inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-600';
+            }
+        }
+    } else {
+        alert(data.message);
+    }
+}
+
+let _deleteUserId = null;
+function openDeleteUser(userId, userName) {
+    _deleteUserId = userId;
+    document.getElementById('delete-user-name').textContent = userName;
+    document.getElementById('modal-delete-user').classList.remove('hidden');
+}
+document.getElementById('btn-confirm-delete-user')?.addEventListener('click', async function() {
+    if (!_deleteUserId) return;
+    const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
+    const res = await fetch('/Home/DeleteUser', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `userId=${encodeURIComponent(_deleteUserId)}&__RequestVerificationToken=${encodeURIComponent(token)}`
+    });
+    const data = await res.json();
+    if (data.success) {
+        document.getElementById('user-row-' + _deleteUserId)?.remove();
+        closePopup('modal-delete-user');
+        _deleteUserId = null;
+    } else {
+        alert(data.message);
+    }
+});
+
+// ─── Sửa Phòng Họp ───────────────────────────────────────────────────────────
+function openEditRoom(btn) {
+    document.getElementById('edit-room-id').value        = btn.dataset.id;
+    document.getElementById('edit-room-name').value      = btn.dataset.name;
+    document.getElementById('edit-room-capacity').value  = btn.dataset.capacity;
+    document.getElementById('edit-room-equipment').value = btn.dataset.equipment;
+    document.getElementById('edit-room-active').checked  = btn.dataset.isactive === 'true';
+    document.getElementById('edit-room-subtitle').textContent = 'Đang sửa: ' + btn.dataset.name;
+    document.getElementById('edit-room-msg').classList.add('hidden');
+    openModal('modal-edit-room');
+}
+
+const formEditRoom = document.getElementById('form-edit-room');
+if (formEditRoom) {
+    formEditRoom.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const fd  = new FormData(this);
+        // Ensure isActive is included even when unchecked
+        if (!this.querySelector('#edit-room-active').checked) fd.set('isActive', 'false');
+        const btn = document.getElementById('btn-submit-edit-room');
+        btn.disabled = true; btn.textContent = 'Đang lưu...';
+        try {
+            const res  = await fetch('/Home/UpdateRoom', { method: 'POST', body: fd });
+            const data = await res.json();
+            if (data.success) {
+                // Update the edit button data-* attributes so next open shows fresh data
+                const editBtn = document.querySelector(`[data-id="${data.id}"][onclick*="openEditRoom"]`);
+                if (editBtn) {
+                    editBtn.dataset.name      = data.name;
+                    editBtn.dataset.capacity  = data.capacity;
+                    editBtn.dataset.equipment = data.equipment;
+                    editBtn.dataset.isactive  = data.isActive ? 'true' : 'false';
+                }
+                closePopup('modal-edit-room');
+                location.reload(); // Reload to refresh room list row visually
+            } else {
+                const msg = document.getElementById('edit-room-msg');
+                msg.textContent = data.message;
+                msg.classList.remove('hidden');
+            }
+        } catch { 
+            alert('Lỗi kết nối, vui lòng thử lại.'); 
+        } finally { 
+            btn.disabled = false; btn.textContent = 'Lưu thay đổi ✓'; 
+        }
+    });
+}
+
+</script>
